@@ -15,10 +15,20 @@ namespace WebApiAutores
         public void ConfigureServices(IServiceCollection services)
         {
             services.AddControllers();
-            // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
+            // Configuración de Swagger/OpenAPI
             services.AddEndpointsApiExplorer();
             services.AddSwaggerGen();
-           
+
+            // Configuración de CORS
+            services.AddCors(options =>
+            {
+                options.AddPolicy("AllowBlazorClient", builder =>
+                {
+                    builder.WithOrigins("https://localhost:7173") // URL de la aplicación Blazor sin barra al final
+                           .AllowAnyHeader()
+                           .AllowAnyMethod();
+                });
+            });
         }
 
         public void Configure(IApplicationBuilder app, IWebHostEnvironment env)
@@ -33,15 +43,18 @@ namespace WebApiAutores
 
             app.UseRouting();
 
+            // Aplicar la política de CORS
+            app.UseCors("AllowBlazorClient");
+
             app.UseAuthorization();
 
             app.UseEndpoints(endpoints =>
             {
                 endpoints.MapControllers();
             });
-
-           
         }
+
+
     }
 
 }

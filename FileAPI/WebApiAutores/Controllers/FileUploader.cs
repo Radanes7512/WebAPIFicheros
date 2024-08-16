@@ -16,6 +16,13 @@ namespace WebApiAutores.Controllers
             _fileService = new FileService();
         }
 
+        [HttpGet("test-connection")]
+        public IActionResult TestConnection()
+        {
+            return Ok(new { message = "La comunicación entre la API y la web funciona correctamente." });
+        }
+
+
 
         /// <summary>
         /// Endpoint para subir un archivo. Recibe el nombre del archivo y el archivo en sí 

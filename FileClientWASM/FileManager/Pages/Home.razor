@@ -1,0 +1,119 @@
+﻿@page "/"
+@using System.Net.Http.Headers
+@using FileManager.Responses
+@using Microsoft.AspNetCore.Components.Forms
+@inject HttpClient Http
+@inject NavigationManager Navigation
+
+<PageTitle>Single File Uploader</PageTitle>
+
+<h3>Subir Archivo</h3>
+
+@if (!string.IsNullOrEmpty(UploadResult))
+{
+    <div class="alert alert-success">
+        <p>El archivo se ha subido con éxito. Ruta del archivo:</p>
+        <p>@UploadResult</p>
+    </div>
+}
+else if (!string.IsNullOrEmpty(ErrorMessage))
+{
+    <div class="alert alert-danger">
+        @ErrorMessage
+    </div>
+}
+
+<InputFile OnChange="HandleSelectedFile" />
+<br />
+<MudButton Class="btn btn-primary mt-3" @onclick="UploadFile" disabled="@(!IsFileSelected)">Subir Archivo</MudButton>
+
+<h3>Probar la Comunicación con la API</h3>
+
+@if (!string.IsNullOrEmpty(Message))
+{
+    <div class="alert alert-success">
+        @Message
+    </div>
+}
+else if (!string.IsNullOrEmpty(ErrorMessage))
+{
+    <div class="alert alert-danger">
+        @ErrorMessage
+    </div>
+}
+
+<MudButton Class="btn btn-primary" @onclick="TestApiConnection">Probar Comunicación</MudButton>
+
+@code {
+    private IBrowserFile? SelectedFile;
+    private bool IsFileSelected => SelectedFile != null;
+    private string? UploadResult;
+    private string? ErrorMessage;
+    private string? Message;
+
+    private void HandleSelectedFile(InputFileChangeEventArgs e)
+    {
+        SelectedFile = e.File;
+    }
+
+    private async Task UploadFile()
+    {
+        if (SelectedFile == null)
+        {
+            ErrorMessage = "No se ha seleccionado ningún archivo.";
+            return;
+        }
+
+        try
+        {
+            var content = new MultipartFormDataContent();
+            var fileContent = new StreamContent(SelectedFile.OpenReadStream(1024 * 1024 * 15)); // Límite de 15MB
+            fileContent.Headers.ContentType = new MediaTypeHeaderValue(SelectedFile.ContentType);
+            content.Add(fileContent, "File", SelectedFile.Name);
+
+            var response = await Http.PostAsync("https://localhost:7054/api/Uploader/upload", content);
+
+            if (response.IsSuccessStatusCode)
+            {
+                // Deserializar la respuesta en un objeto de tipo FileUploadResponse
+                var result = await response.Content.ReadFromJsonAsync<FileUploadResponse>();
+                UploadResult = result?.FilePath;
+                ErrorMessage = null;
+            }
+            else
+            {
+                ErrorMessage = "Error al subir el archivo. " + await response.Content.ReadAsStringAsync();
+            }
+        }
+        catch (Exception ex)
+        {
+            ErrorMessage = $"Se produjo un error: {ex.Message}";
+        }
+    }
+
+    private async Task TestApiConnection()
+    {
+        try
+        {
+            var response = await Http.GetAsync("https://localhost:7054/api/Uploader/test-connection");
+
+            if (response.IsSuccessStatusCode)
+            {
+                // Deserializar la respuesta en un objeto de tipo ApiTestResponse
+                var result = await response.Content.ReadFromJsonAsync<ApiTestResponse>();
+                Message = result?.Message;
+                ErrorMessage = null;
+            }
+            else
+            {
+                ErrorMessage = "Error al comunicarse con la API: " + response.ReasonPhrase;
+                Message = null;
+            }
+        }
+        catch (Exception ex)
+        {
+            ErrorMessage = $"Error: {ex.Message}";
+            Message = null;
+        }
+    }
+}
